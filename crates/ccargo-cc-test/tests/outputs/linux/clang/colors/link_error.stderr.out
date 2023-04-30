@@ -1,0 +1,2 @@
+[0m[1m[31merror .text+0x0[0m[1m: [0m multiple definition of `func'; /tmp/warn-cdac20.o:warn.c:(.text+0x0): first defined here[0m[1m[36m
+   --> [0mmain.c in function `func`[0m

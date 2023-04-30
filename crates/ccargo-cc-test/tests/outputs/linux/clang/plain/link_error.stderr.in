@@ -1,0 +1,3 @@
+/usr/bin/ld: /tmp/main-5b6473.o: in function `func':
+main.c:(.text+0x0): multiple definition of `func'; /tmp/warn-f99cb0.o:warn.c:(.text+0x0): first defined here
+clang: error: linker command failed with exit code 1 (use -v to see invocation)

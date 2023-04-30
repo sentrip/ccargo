@@ -1,0 +1,7 @@
+[01m[Kmain.c:[m[K In function '[01m[Kmain[m[K':
+[01m[Kmain.c:4:13:[m[K [01;31m[Kerror: [m[Kvoid value not ignored as it ought to be
+     int x = [01;31m[Kfunc[m[K();
+             [01;31m[K^~~~[m[K
+[01m[Kmain.c:5:13:[m[K [01;31m[Kerror: [m[Kvoid value not ignored as it ought to be
+     int y = [01;31m[Kfunc[m[K();
+             [01;31m[K^~~~[m[K

@@ -1,0 +1,4 @@
+[alias]
+test-cc = "test --package ccargo-cc-test"
+test-cca = "test --package ccargo-cc-test --test args"
+test-ccb = "test --package ccargo-cc-test --test build"

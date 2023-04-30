@@ -1,0 +1,9 @@
+[0m[1m[33mwarning[0m[1m: [0m[0m[1mincompatible pointer types initializing 'int *' with an expression of type 'long long *' [-Wincompatible-pointer-types][0m[0m[1m[36m
+   --> [0mmain.c:4:10[0m
+    4 |     int* x = &v;[0m
+      | [0;1;33m         ^   ~~[0m
+[0m[1m[33mwarning[0m[1m: [0m[0m[1mincompatible pointer types initializing 'int *' with an expression of type 'long long *' [-Wincompatible-pointer-types][0m[0m[1m[36m
+   --> [0mmain.c:5:10[0m
+    5 |     int* y = &v;[0m
+      | [0;1;33m         ^   ~~[0m
+[0m2 warnings generated.[0m

@@ -1,0 +1,5 @@
+warn.c
+main.c
+Generating Code...
+   Creating library build\main.lib and object build\main.exp
+LINK : warning LNK4217: symbol 'func' defined in 'warn.obj' is imported by 'main.obj' in function 'main'

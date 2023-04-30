@@ -1,0 +1,7 @@
+main.c:4:9: error: initializing 'int' with an expression of incompatible type 'void'
+    int x = func();
+        ^   ~~~~~~
+main.c:5:9: error: initializing 'int' with an expression of incompatible type 'void'
+    int y = func();
+        ^   ~~~~~~
+2 errors generated.

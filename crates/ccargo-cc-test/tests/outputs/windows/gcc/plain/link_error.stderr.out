@@ -1,0 +1,4 @@
+error .text+0x0:  multiple definition of `func'
+   --> C:\Users\Djordje\AppData\Local\Temp\ccqXxn1o.o:main.c
+error .text+0x0:  first defined here
+   --> C:\Users\Djordje\AppData\Local\Temp\ccOdnuho.o:warn.c

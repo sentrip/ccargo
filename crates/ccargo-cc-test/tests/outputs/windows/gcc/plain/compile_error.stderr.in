@@ -1,0 +1,7 @@
+main.c: In function 'main':
+main.c:4:13: error: void value not ignored as it ought to be
+     int x = func();
+             ^~~~
+main.c:5:13: error: void value not ignored as it ought to be
+     int y = func();
+             ^~~~

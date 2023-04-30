@@ -1,0 +1,8 @@
+error: void value not ignored as it ought to be
+   --> main.c:4:13 in function `‘main’`
+    4 |     int x = func();
+      |             ^~~~
+error: void value not ignored as it ought to be
+   --> main.c:5:13 in function `‘main’`
+    5 |     int y = func();
+      |             ^~~~

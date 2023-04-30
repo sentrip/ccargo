@@ -1,0 +1,7 @@
+main.c:4:10: warning: incompatible pointer types initializing 'int *' with an expression of type 'long long *' [-Wincompatible-pointer-types]
+    int* x = &v;
+         ^   ~~
+main.c:5:10: warning: incompatible pointer types initializing 'int *' with an expression of type 'long long *' [-Wincompatible-pointer-types]
+    int* y = &v;
+         ^   ~~
+2 warnings generated.

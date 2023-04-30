@@ -1,0 +1,8 @@
+[0m[1m[33mwarning[0m[1m: [0m[m[Kinitialization of ‘[01m[Kint *[m[K’ from incompatible pointer type ‘[01m[Klong long int *[m[K’ [[01;33m[K-Wincompatible-pointer-types[m[K][0m[1m[36m
+   --> [0mmain.c:4:14 in function `main`[0m
+    4 |     int* x = [01;33m[K&[m[Kv;[0m
+      |              [01;33m[K^[m[K[0m
+[0m[1m[33mwarning[0m[1m: [0m[m[Kinitialization of ‘[01m[Kint *[m[K’ from incompatible pointer type ‘[01m[Klong long int *[m[K’ [[01;33m[K-Wincompatible-pointer-types[m[K][0m[1m[36m
+   --> [0mmain.c:5:14 in function `main`[0m
+    5 |     int* y = [01;33m[K&[m[Kv;[0m
+      |              [01;33m[K^[m[K[0m

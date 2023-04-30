@@ -1,0 +1,3 @@
+/usr/bin/ld: /tmp/ccD63dNa.o: in function `func':
+main.c:(.text+0x0): multiple definition of `func'; /tmp/ccNxW6PK.o:warn.c:(.text+0x0): first defined here
+collect2: error: ld returned 1 exit status

@@ -1,0 +1,6 @@
+error C2220: the following warning is treated as an error
+   --> main.c:4:1
+error C4133: 'initializing': incompatible types - from '__int64 *' to 'int *'
+   --> main.c:4:1
+error C4133: 'initializing': incompatible types - from '__int64 *' to 'int *'
+   --> main.c:5:1

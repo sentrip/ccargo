@@ -1,0 +1,2 @@
+   Creating library build\main.lib and object build\main.exp
+LINK : warning LNK4217: symbol 'func' defined in 'warn-8c1b9b.o' is imported by 'main-90a6fb.o' in function 'main'

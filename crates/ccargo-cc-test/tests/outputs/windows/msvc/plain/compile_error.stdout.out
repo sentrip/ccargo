@@ -1,0 +1,4 @@
+error C2120: 'void' illegal with all types
+   --> main.c:4:9
+error C2120: 'void' illegal with all types
+   --> main.c:5:9

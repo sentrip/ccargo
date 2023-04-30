@@ -1,0 +1,4 @@
+warning LNK4217: symbol 'func' defined in 'warn.obj' is imported by 'main.obj' in function 'main'
+   --> LINK 
+error LNK1218: warning treated as error; no output file generated
+   --> LINK 

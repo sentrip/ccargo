@@ -1,0 +1,3 @@
+C:\Users\Djordje\AppData\Local\Temp\cc74bl34.o:main.c:(.text+0x0): multiple definition of `func'
+C:\Users\Djordje\AppData\Local\Temp\ccEE0nB5.o:warn.c:(.text+0x0): first defined here
+collect2.exe: error: ld returned 1 exit status

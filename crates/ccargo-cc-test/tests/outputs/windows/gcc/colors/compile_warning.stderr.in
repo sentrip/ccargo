@@ -1,0 +1,7 @@
+[01m[Kmain.c:[m[K In function '[01m[Kmain[m[K':
+[01m[Kmain.c:4:14:[m[K [01;35m[Kwarning: [m[Kinitialization of '[01m[Kint *[m[K' from incompatible pointer type '[01m[Klong long int *[m[K' [[01;35m[K-Wincompatible-pointer-types[m[K]
+     int* x = [01;35m[K&[m[Kv;
+              [01;35m[K^[m[K
+[01m[Kmain.c:5:14:[m[K [01;35m[Kwarning: [m[Kinitialization of '[01m[Kint *[m[K' from incompatible pointer type '[01m[Klong long int *[m[K' [[01;35m[K-Wincompatible-pointer-types[m[K]
+     int* y = [01;35m[K&[m[Kv;
+              [01;35m[K^[m[K

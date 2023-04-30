@@ -1,0 +1,8 @@
+warning: initialization of ‘int *’ from incompatible pointer type ‘long long int *’ [-Wincompatible-pointer-types]
+   --> main.c:4:14 in function `‘main’`
+    4 |     int* x = &v;
+      |              ^
+warning: initialization of ‘int *’ from incompatible pointer type ‘long long int *’ [-Wincompatible-pointer-types]
+   --> main.c:5:14 in function `‘main’`
+    5 |     int* y = &v;
+      |              ^

@@ -1,0 +1,7 @@
+[1mmain.c:4:9: [0m[0;1;31merror: [0m[1minitializing 'int' with an expression of incompatible type 'void'[0m
+    int x = func();
+[0;1;32m        ^   ~~~~~~
+[0m[1mmain.c:5:9: [0m[0;1;31merror: [0m[1minitializing 'int' with an expression of incompatible type 'void'[0m
+    int y = func();
+[0;1;32m        ^   ~~~~~~
+[0m2 errors generated.

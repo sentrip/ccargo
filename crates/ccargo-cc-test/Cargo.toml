@@ -1,0 +1,12 @@
+[package]
+name = "ccargo-cc-test"
+version.workspace = true
+edition.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+ccargo = { path = "../../ccargo" }
+
+[build-dependencies]
+cc = "1.0"
+ccargo = { path = "../../ccargo" }

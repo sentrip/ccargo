@@ -1,0 +1,2 @@
+error .text+0x0:  multiple definition of `func'; /tmp/ccNxW6PK.o:warn.c:(.text+0x0): first defined here
+   --> main.c in function `func`

@@ -1,0 +1,5 @@
+warn.c
+main.c
+Generating Code...
+main.obj : error LNK2005: func already defined in warn.obj
+build\main.exe : fatal error LNK1169: one or more multiply defined symbols found

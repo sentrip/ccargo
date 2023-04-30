@@ -1,0 +1,2 @@
+main-8481da.o : error LNK2005: func already defined in warn-5cc579.o
+build\main.exe : fatal error LNK1169: one or more multiply defined symbols found

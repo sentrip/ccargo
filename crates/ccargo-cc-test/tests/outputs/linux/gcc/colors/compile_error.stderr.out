@@ -1,0 +1,8 @@
+[0m[1m[31merror[0m[1m: [0m[m[Kvoid value not ignored as it ought to be[0m[1m[36m
+   --> [0mmain.c:4:13 in function `main`[0m
+    4 |     int x = [01;31m[Kfunc[m[K();[0m
+      |             [01;31m[K^~~~[m[K[0m
+[0m[1m[31merror[0m[1m: [0m[m[Kvoid value not ignored as it ought to be[0m[1m[36m
+   --> [0mmain.c:5:13 in function `main`[0m
+    5 |     int y = [01;31m[Kfunc[m[K();[0m
+      |             [01;31m[K^~~~[m[K[0m

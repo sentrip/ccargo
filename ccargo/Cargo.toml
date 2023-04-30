@@ -1,0 +1,36 @@
+[package]
+name = "ccargo"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ccargo"
+path = "src/lib.rs"
+doctest = false
+
+[[bin]]
+name = "ccargo"
+test = false
+doctest = false
+
+[dependencies]
+anyhow = "1"
+atty = "0.2"
+cc = "1"
+ccargo-platform = { path = "../crates/ccargo-platform" }
+filetime = "0.2"
+home = "0.5"
+lazy_static = "1"
+memchr = "2.5"
+termcolor = "1"
+toml = "0.5"
+rayon = "1.6"
+semver = { version = "1.0", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_ignored = "0.1"
+
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3"
+features = [
+  "minwindef",
+]

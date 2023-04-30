@@ -1,0 +1,9 @@
+.586
+.MODEL FLAT, C
+.CODE
+
+asm PROC
+  MOV EAX, 42
+  RET
+asm ENDP
+END
