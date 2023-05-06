@@ -29,7 +29,7 @@ pub use msg_queue::{MsgQueue, MsgWriter};
 pub mod paths;
 
 mod serde_bin;
-pub use serde_bin::{BinaryReader, BinaryWriter};
+pub use serde_bin::{BinaryReader, BinaryWriter, BinarySerialize, BinaryDeserialize};
 
 mod shell;
 pub use shell::{Shell, ColorChoice, Verbosity};

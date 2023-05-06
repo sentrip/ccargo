@@ -1,6 +1,24 @@
 use crate::utils::paths;
 use std::path::{Path, PathBuf};
 
+pub trait BinaryDeserialize: Sized {
+    fn deserialize(r: &mut BinaryReader) -> Option<Self>;
+    
+    fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        Self::deserialize(&mut BinaryReader(bytes))
+    }
+}
+
+pub trait BinarySerialize {    
+    fn serialize(&self, w: &mut BinaryWriter);
+    
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut w = BinaryWriter::default();
+        self.serialize(&mut w);
+        w.into_inner()
+    }
+}
+
 #[derive(Default)]
 pub struct BinaryWriter(Vec<u8>);
 

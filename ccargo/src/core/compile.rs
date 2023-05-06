@@ -5,6 +5,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+// TODO: Target/Toolchain overhaul
+// Rust did all the work for us already, we just need to use it
 
 pub struct Context<'a> {
     pub config: &'a Config,
@@ -157,7 +159,7 @@ fn compile_unit(
     stderr: &MsgQueue<std::io::Stderr>,
 ) -> IResult<()> {
     let fingerprint_path = unit.fingerprint_path(cx.layout);
-    let (mut fingerprint, state) = fingerprint::prepare(
+    let (fingerprint, state) = fingerprint::prepare(
         cx,
         unit,
         &fingerprint_path,
@@ -170,8 +172,7 @@ fn compile_unit(
     use crate::utils::{ColorString, WriteColorExt, Color};
     let stdout = stdout.writer();
     match unit {
-        Unit::Target(target) => {
-            
+        Unit::Target(target) => {            
             drop(stdout.push({
                 let mut msg = ColorString::new();
                 drop(msg.write_status_justified(
@@ -203,7 +204,6 @@ fn compile_unit(
 
             let status = step.run(
                 cx,
-                &mut fingerprint,
                 stdout,
                 stderr.writer(),
             )?;

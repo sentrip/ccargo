@@ -1,8 +1,9 @@
-use crate::core::{TargetName, PackageId, Layout, Context, Fingerprint};
-use crate::utils::{IResult, InternedString, MsgWriter, paths};
+use crate::core::{TargetName, PackageId, Layout, Context, fingerprint::DepInfo};
+use crate::utils::{IResult, InternedString, MsgWriter, paths, BinarySerialize};
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, ExitStatus, Stdio};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 
 
@@ -13,6 +14,22 @@ pub enum Program {
     Script{tool: PathBuf, script: PathBuf},
 }
 
+impl From<&str> for Program {
+    fn from(command: &str) -> Self {
+        if let Ok(name) = TargetName::from_str(command) {
+            Program::Target(name)
+        } else {
+            let script = PathBuf::from(command);
+            match script.extension().and_then(|x| x.to_str()) {
+                Some("py") => Program::Script{script, tool: "python".into()},
+                Some("sh") => Program::Script{script, tool: "sh".into()},
+                Some("bat") => Program::Script{script, tool: "cmd.exe".into()},
+                Some("ps1") => Program::Script{script, tool: "powershell.exe".into()},
+                _ => Program::Binary(script),
+            }
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct Step(Arc<StepInner>);
@@ -79,7 +96,6 @@ impl Step {
     pub fn run<O: Write, E: Write + 'static>(
         &self, 
         cx: &Context,
-        fingerprint: &mut Arc<Fingerprint>,
         mut stdout: MsgWriter<O>,
         mut stderr: MsgWriter<E>,
     ) -> IResult<ExitStatus> {        
@@ -93,61 +109,71 @@ impl Step {
                 path.clone()
             }
             Program::Script { tool, .. } => {
+                // TODO: try to find script in tools dir
                 tool.clone()
             }
         };
-
+        
         let mut cmd = Command::new(program);
         
         // If executing a script then the first argument is the script path
         if let Program::Script { script, .. } = &self.program {
-            // TODO: try to find script in scripts dir
             cmd.arg(script);
         }
-
+        
+        let root = self.package.root();
         let mut child = cmd
+            .args(&self.args)
+            .current_dir(root)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .args(&self.args)
             .spawn()?;
 
+        // TODO: Cache output for step and replay when fresh?
         let buf_stderr = BufReader::new(child.stderr.take().unwrap());
         rayon::spawn(move || {
-            for line in buf_stderr.split(b'\n').filter_map(|l| l.ok()) {
+            for mut line in buf_stderr.split(b'\n').filter_map(|l| l.ok()) {
+                if *line.last().unwrap() == b'\r' { 
+                    line.pop(); 
+                }
                 drop(write!(stderr, "ccargo:warning="));
                 drop(stderr.write_all(&line));
                 drop(writeln!(stderr, ""));
             }
         });
 
-        let mut rerun_paths = Vec::new();        
+        let mut dep_info = DepInfo::default();
         let buf_stdout = BufReader::new(child.stdout.take().unwrap());
-        for line in buf_stdout.split(b'\n').filter_map(|l| l.ok()) {
+        for mut line in buf_stdout.split(b'\n').filter_map(|l| l.ok()) {
+            if *line.last().unwrap() == b'\r' { 
+                line.pop();
+            }
+            // TODO: Better error message for parsing of step output
             match Message::parse(&line) {
-                Ok(Message::RerunIfChanged(path)) => {
-                    rerun_paths.push(path.to_path_buf());
+                Err(e) => {
+                    drop(writeln!(stdout, "Step `{}` output parse error: `{}`", self.full_name(), e));
                 }
                 Ok(Message::Raw(line)) => { 
                     drop(writeln!(stdout, "{}", line));
-                }                
-                Err(e) => {
-                    // TODO: Better error message for parsing of step output
-                    drop(writeln!(stdout, "Step `{}` output parse error: `{}`", self.full_name(), e));
+                }
+                Ok(Message::RerunIfChanged(path)) => {
+                    if let Ok(rel) = paths::abs(path, root).strip_prefix(root) {
+                        dep_info.add_pkg_relative(rel.to_path_buf());
+                    } else {
+                        drop(writeln!(stdout, "Path `{:?}` was ignored as it is outside of the package root: `{:?}`", path, root));
+                    }
                 }
             }
         }
 
         let status = child.wait()?;
-        
+
         let output = self.output_path(cx.layout);
-        
-        if !rerun_paths.is_empty() {
-            Arc::make_mut(fingerprint).add_rerun_if_changed(output.clone(), rerun_paths);
+        paths::write_create_all(&output, b"")?;
+
+        if !dep_info.is_empty() {
+            paths::write_create_all(self.dep_info_path(cx.layout), dep_info.to_bytes())?;
         }
-
-        paths::write(&output, b"")?;
-
-        // TODO: Write dep-info for step (inputs, and objects if the user requested)
 
         Ok(status)
     }
@@ -222,8 +248,8 @@ impl<'a> Message<'a> {
         let line = std::str::from_utf8(line)?;
 
         if let Some(rest) = line.strip_prefix("ccargo:") {
-            if rest.starts_with("rerun-if-changed:") {
-                Ok(Self::RerunIfChanged(Path::new(rest)))
+            if let Some(path) = rest.strip_prefix("rerun-if-changed:") {
+                Ok(Self::RerunIfChanged(Path::new(path)))
             } else {
                 anyhow::bail!("Invalid step directive `{}`", line)
             }

@@ -1,6 +1,6 @@
 use crate::cc::{dep_info, Object};
 use crate::core::{Unit, Context, Target, TargetName, Step};
-use crate::utils::{IResult, BinaryReader, BinaryWriter, paths, cached_mtime, to_hex, hash_u64};
+use crate::utils::{IResult, BinaryReader, BinaryWriter, BinarySerialize, BinaryDeserialize, paths, cached_mtime, to_hex, hash_u64};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Arc};
@@ -23,7 +23,7 @@ impl FingerprintState {
 
 /// A fingerprint can be considered to be a "short string" representing the
 /// state of a world for a target.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Fingerprint {
     // Hash of the compiler used (path, mtime)
     compiler_hash: u64,
@@ -49,7 +49,7 @@ pub struct Fingerprint {
 
 
 /// Indication of the status on the filesystem for a particular unit.
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 enum FsStatus {
     /// This unit is to be considered stale, even if hash information all
     /// matches. The filesystem inputs have changed (or are missing) and the
@@ -65,7 +65,7 @@ enum FsStatus {
 
 /// Dependency edge information for fingerprints. This is generated for each
 /// dependency and is stored in a `Fingerprint` below.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct DepFingerprint {
     /// The hash of the package id that this dependency points to
     pkg_id: u64,
@@ -121,6 +121,7 @@ pub fn prepare(
         println!("Target `{}` - fresh", unit.full_name());
         return Ok((fingerprint, FingerprintState::default()));
     } else {
+        state.link = true;
         println!("{}", r.err().unwrap());
     }
     println!("Target `{}` - dirty", unit.full_name());
@@ -137,7 +138,9 @@ pub fn prepare(
 pub fn write_to_disk(
     fingerprint: &Arc<Fingerprint>,
     fingerprint_path: &Path,
-) -> IResult<()> {    
+) -> IResult<()> {
+    paths::create_dir_all(fingerprint_path.parent().unwrap())?;
+
     paths::write(
         fingerprint_path, 
         to_hex(fingerprint.hash_u64())
@@ -266,10 +269,16 @@ fn calculate_step<'a>(
         vec![LocalFingerprint::CheckDepInfo{ dep_info, check_all: false }]
     };
 
+    let outputs = {
+        let mut outputs = step.outputs.clone();
+        outputs.push(step.output_path(cx.layout));
+        outputs
+    };
+
     Ok((&step.inputs, Fingerprint{
         deps,
         local,
-        outputs: step.outputs.clone(),
+        outputs,
         fs_status: FsStatus::Stale,
         compiler_hash: 0,
         target_hash: hash_u64(&step.stable_hash(pkg_root)),
@@ -287,16 +296,6 @@ impl DepFingerprint {
 }
 
 impl Fingerprint {
-    /// Add `ReRunIfChanged` local fingerprint item
-    pub(crate) fn add_rerun_if_changed(&mut self, output: PathBuf, paths: Vec<PathBuf>) {
-        use LocalFingerprint::*;
-        if let Some(item) = self.local.iter_mut().find(|x| matches!(x, RerunIfChanged { .. })) {
-            *item = RerunIfChanged { output, paths };
-        } else {
-            self.local.push(RerunIfChanged { output, paths })
-        }
-    }
-
     /// Dynamically inspect the local filesystem to update the `fs_status` field
     /// of this `Fingerprint`.
     fn check_filesystem(
@@ -527,7 +526,7 @@ impl LocalFingerprint {
                     return Ok(Some(StaleItem::MissingFile(dep_info)));
                 };
 
-                let info = if let Some(info) = DepInfo::deserialize(&data) {
+                let info = if let Some(info) = DepInfo::from_bytes(&data) {
                     info
                 } else {
                     return Ok(Some(StaleItem::MissingFile(dep_info)));
@@ -743,13 +742,28 @@ pub fn translate_dep_info<'a, I: IntoIterator<Item=&'a Object>>(
     }
     
     paths::create_dir_all(output_path.parent().unwrap())?;
-    paths::write(output_path, dep.serialize())
+    paths::write(output_path, dep.to_bytes())
 }
+
 
 #[derive(Default)]
 pub struct DepInfo {
     files: Vec<(DepInfoPathType, PathBuf)>,
     objects: Vec<DepObject>,
+}
+
+impl DepInfo {
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty() && self.objects.is_empty()
+    }
+    
+    pub fn add_pkg_relative(&mut self, path: PathBuf) {
+        self.files.push((DepInfoPathType::PackageRootRelative, path));
+    }
+    
+    pub fn add_target_relative(&mut self, path: PathBuf) {
+        self.files.push((DepInfoPathType::TargetRootRelative, path));
+    }
 }
 
 struct DepObject {
@@ -793,10 +807,9 @@ impl DepInfoPathType {
     }
 }
 
-impl DepInfo {
-    fn deserialize(bytes: &[u8]) -> Option<Self> {
+impl BinaryDeserialize for DepInfo {
+    fn deserialize(r: &mut BinaryReader) -> Option<Self> {
         let mut s = Self::default();
-        let mut r = BinaryReader(bytes);
         let n_files = r.read_u32()?;
         let n_objs = r.read_u32()?;
         for _ in 0..n_files {
@@ -815,9 +828,9 @@ impl DepInfo {
         }
         Some(s)
     }
-
-    fn serialize(&self) -> Vec<u8> {
-        let mut w = BinaryWriter::default();
+}
+impl BinarySerialize for DepInfo {
+    fn serialize(&self, w: &mut BinaryWriter) {
         w.write_u32(self.files.len() as u32);
         w.write_u32(self.objects.len() as u32);
         for (kind, path) in self.files.iter() {
@@ -831,11 +844,10 @@ impl DepInfo {
                 w.write_u32(*inp);
             }
         }
-        w.into_inner()
     }
 }
 
-impl Fingerprint {
+impl BinaryDeserialize for Fingerprint {
     fn deserialize(r: &mut BinaryReader) -> Option<Self> {
         let mut v = Self::default();
         v.compiler_hash = r.read_u64()?;
@@ -851,7 +863,8 @@ impl Fingerprint {
         }
         Some(v)
     }
-
+}
+impl BinarySerialize for Fingerprint {
     fn serialize(&self, w: &mut BinaryWriter) {
         w.write_u64(self.compiler_hash);
         w.write_u64(self.target_hash);
@@ -867,7 +880,7 @@ impl Fingerprint {
     }
 }
 
-impl DepFingerprint {
+impl BinaryDeserialize for DepFingerprint {
     fn deserialize(r: &mut BinaryReader) -> Option<Self> {
         let pkg_id = r.read_u64()?;
         let name = r.read_bytes()?;
@@ -875,7 +888,8 @@ impl DepFingerprint {
         let fingerprint = Arc::new(Fingerprint::deserialize(r)?);
         Some(DepFingerprint{pkg_id, name, fingerprint})
     }
-
+}
+impl BinarySerialize for DepFingerprint {
     fn serialize(&self, w: &mut BinaryWriter) {
         w.write_u64(self.pkg_id);
         w.write_bytes(self.name.to_string());
@@ -883,7 +897,7 @@ impl DepFingerprint {
     }
 }
 
-impl LocalFingerprint {
+impl BinaryDeserialize for LocalFingerprint {
     fn deserialize(r: &mut BinaryReader) -> Option<Self> {
         let kind = r.read_u8()?;
         Some(match kind {
@@ -903,7 +917,8 @@ impl LocalFingerprint {
             _ => unreachable!(),
         })
     }
-
+}
+impl BinarySerialize for LocalFingerprint {
     fn serialize(&self, w: &mut BinaryWriter) {
         match self {
             Self::CheckDepInfo { dep_info, check_all } => {

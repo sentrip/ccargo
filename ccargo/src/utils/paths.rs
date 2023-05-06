@@ -40,6 +40,26 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> IResult<()
         .with_context(|| format!("failed to write `{}`", path.display()))
 }
 
+/// Equivalent to [`paths::write`] but also creates the parent directory if it doesn't exist.
+pub fn write_create_all<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> IResult<()> {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        create_dir_all(parent)?;
+    }
+    fs::write(path, contents.as_ref())
+        .with_context(|| format!("failed to write `{}`", path.display()))
+}
+
+/// Get the absolute path of a file relative to `cwd`
+pub fn abs<P: AsRef<Path>>(path: P, cwd: &Path) -> PathBuf {
+    let path = path.as_ref();
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        normalize(cwd.join(path))
+    }
+}
+
 /// Path normalization - like `canonicalize` but without using std::fs
 pub fn normalize(p: impl AsRef<Path>) -> PathBuf {
     let path = p.as_ref();
@@ -57,6 +77,23 @@ pub fn normalize(p: impl AsRef<Path>) -> PathBuf {
         }
     }
     out
+}
+
+/// Find the given relative path in any of the directories in `dirs`
+pub fn find_rel<P, I>(path: P, dirs: I) -> Option<PathBuf>
+where
+    P: AsRef<Path>,
+    I: IntoIterator,
+    I::Item: AsRef<Path>,
+{
+    let path = path.as_ref();
+    for dir in dirs {
+        let rel = dir.as_ref().join(path);
+        if rel.exists() {
+            return Some(rel)
+        }
+    }
+    None
 }
 
 /// Converts a path to UTF-8 bytes.

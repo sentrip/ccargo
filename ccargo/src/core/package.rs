@@ -1,57 +1,10 @@
-use crate::cc::{BinType, Options, Profile, Build, Output};
-use crate::core::{TargetName, PackageId, SourceId, Step, Context, FingerprintState, fingerprint};
-use crate::toml::{CCARGO_SHARED, CCARGO_EXPORT};
+use crate::cc::{BinType, Options, Build, Output};
+use crate::core::{TargetName, PackageId, SourceId, Step, Context, FingerprintState, Layout, PublicPrivate, fingerprint};
 use crate::utils::{IResult, InternedString, MsgWriter, paths};
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-
-
-/// Layout
-pub struct Layout {
-    root_dir: PathBuf, 
-    target_dir: PathBuf,   
-}
-
-impl Layout {
-    pub fn new<P: AsRef<Path>>(cwd: P, profile: &Profile, target: Option<&str>) -> Self {
-        let root_dir = cwd.as_ref().to_path_buf();
-        // EITHER
-        //      `target/debug`
-        // OR
-        //      `target/x86_64-pc-windows-msvc/debug`
-        let mut target_dir = root_dir.join("target");
-        if let Some(t) = target {
-            target_dir.push(t);
-        }
-        target_dir.push(profile.dir_name);
-        Self { root_dir, target_dir }
-    }
-
-    pub fn root(&self) -> PathBuf {
-        self.root_dir.clone()
-    }
-
-    pub fn target(&self) -> PathBuf {
-        self.target_dir.clone()
-    }
-    
-    pub fn deps(&self) -> PathBuf {
-        self.target_dir.join("deps")
-    }
-
-    pub fn fingerprint(&self) -> PathBuf {
-        self.target_dir.join(".fingerprint")
-    }
-
-    pub fn output_dir(&self, pkg: &PackageId) -> PathBuf {
-        let mut path = self.deps();
-        path.push(&pkg.unique_name());
-        path
-
-    }
-}
 
 
 /// PackageMap - in package with name A, which package does package name B refer to?
@@ -275,74 +228,6 @@ pub struct Dependency {
 }
 
 
-/// Struct that stores information about whether certain
-/// data is public or private
-pub struct PublicPrivate<T>(T, bool);
-
-impl<T> PublicPrivate<T> {
-    pub fn public(value: T) -> Self {
-        Self(value, true)
-    }
-    pub fn private(value: T) -> Self {
-        Self(value, false)
-    }
-    pub fn is_public(&self) -> bool {
-        self.1
-    }
-}
-
-impl<T: Default> Default for PublicPrivate<T> {
-    fn default() -> Self {
-        Self::private(T::default())
-    }
-}
-
-impl<T> std::ops::Deref for PublicPrivate<T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> std::ops::DerefMut for PublicPrivate<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<T: Eq> Eq for PublicPrivate<T> {}
-
-impl<T: Copy> Copy for PublicPrivate<T> {}
-
-impl<T: Clone> Clone for PublicPrivate<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone(), self.1.clone())
-    }
-}
-
-impl<T: PartialEq> PartialEq for PublicPrivate<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0) && self.1 == other.1
-    }
-}
-
-impl<T: std::hash::Hash> std::hash::Hash for PublicPrivate<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-        self.1.hash(state);
-    }
-}
-
-impl<T: std::fmt::Debug> std::fmt::Debug for PublicPrivate<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple(if self.is_public() { "Public" } else { "Private" })
-            .field(&self.0)
-            .finish()
-    }
-}
-
-
-
 impl Target {
     pub fn output_name(&self, target_triple: &str) -> PathBuf {
         let mut path = PathBuf::from(&self.name);
@@ -392,9 +277,9 @@ impl Target {
     ) -> IResult<Output> {
         // TODO: Better tracking of export header dirtinesss/generation
         if let Some(path) = &self.export_header {
-            if !path.exists() {
+            // if !path.exists() {
                 gen_export_header(&self.name, path)?;
-            }
+            // }
         }
         
         let src_dir = self.package.root();
@@ -501,10 +386,10 @@ impl<'a> std::hash::Hash for TargetStableHash<'a> {
 fn gen_export_header(name: &str, path: &Path) -> IResult<()> {
     paths::create_dir_all(path.parent().unwrap())?;
     paths::write(path, export_header(
-        &name.to_uppercase(),
-        "EXPORT_",
-        CCARGO_SHARED,
-        CCARGO_EXPORT,
+        name,
+        ("EXPORT_", ""),
+        ("", "_SHARED"),
+        ("", "_EXPORTS"),
     ))?;
     Ok(())
 }
@@ -512,24 +397,27 @@ fn gen_export_header(name: &str, path: &Path) -> IResult<()> {
 
 fn export_header(
     name: &str, 
-    api: &str,
-    shared: &str, 
-    export: &str, 
+    api: (&str, &str),
+    shared: (&str, &str), 
+    export: (&str, &str), 
 ) -> String {
-    format!(r#"#ifdef {shared}{name}
+    let (prefix, suffix) = api;
+    let (shared_prefix, shared_suffix) = shared;
+    let (export_prefix, export_suffix) = export;
+    format!(r#"#ifdef {shared_prefix}{name}{shared_suffix}
     #if defined(_MSC_VER)
-        #ifdef {export}{name}
-            #define {api}{name} __declspec(dllexport)
+        #ifdef {export_prefix}{name}{export_suffix}
+            #define {prefix}{name}{suffix} __declspec(dllexport)
         #else
-            #define {api}{name} __declspec(dllimport)
+            #define {prefix}{name}{suffix} __declspec(dllimport)
         #endif
     #elif defined(__GNUC__) || defined(__clang__)
-        #define {api}{name} __attribute__((visibility("default")))
+        #define {prefix}{name}{suffix} __attribute__((visibility("default")))
     #else
-        #define {api}{name}
+        #define {prefix}{name}{suffix}
     #endif
 #else
-    #define {api}{name}
+    #define {prefix}{name}{suffix}
 #endif
 "#)
 }
